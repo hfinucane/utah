@@ -1,0 +1,3 @@
+[submodule "go-virtualbox"]
+	path = src/github.com/riobard/go-virtualbox
+	url = https://github.com/riobard/go-virtualbox.git
