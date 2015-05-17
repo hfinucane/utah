@@ -112,6 +112,7 @@ func CreateMachine(name, image string) (*Machine, error) {
 	machines, _ := virtualbox.ListMachines()
 	fmt.Println(machines)
 
+	// XXX TODO FIXME actually get the right machine out of here
 	new_machine := machines[len(machines)-1]
 
 	// set up storage
