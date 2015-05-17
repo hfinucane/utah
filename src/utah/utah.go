@@ -112,7 +112,7 @@ func CreateMachine(name, image string) (*Machine, error) {
 	machines, _ := virtualbox.ListMachines()
 	fmt.Println(machines)
 
-	new_machine := machines[0]
+	new_machine := machines[len(machines)-1]
 
 	// set up storage
 	// Chose things that looked like VB defaults, and magic numbers from boot2docker-cli
