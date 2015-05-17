@@ -11,7 +11,6 @@ import	(
 		"fmt"
 		"time"
 		"log"
-		"path/filepath"
 		)
 
 func TestLifecycle(t *testing.T) {
@@ -27,7 +26,7 @@ func TestLifecycle(t *testing.T) {
 		return
 	}
 
-	err = utah.ConvertToVDI(filepath.Join(utah.Cache, coreos_vm), coreos_vd)
+	err = utah.ConvertToVDI(coreos_vm, coreos_vd)
 	if err != nil {
 		fmt.Println("Conversion failed", err)
 		return

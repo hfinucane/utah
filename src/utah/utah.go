@@ -18,7 +18,7 @@ import (
 	"syscall"
 )
 
-var Cache string = "/var/tmp/.utahcache"
+var cache string = "/var/tmp/.utahcache"
 
 func CopyFile(src, dest string) error {
 	input, err := os.Open(src)
@@ -39,9 +39,9 @@ func CopyFile(src, dest string) error {
 }
 
 func DownloadToCache(url, filename string) error {
-	dest := filepath.Join(Cache, filename)
+	dest := filepath.Join(cache, filename)
 
-	err := os.MkdirAll(Cache, 0755)
+	err := os.MkdirAll(cache, 0755)
 	if err != nil {
 		return err
 	}
@@ -63,14 +63,14 @@ func DownloadToCache(url, filename string) error {
 		}
 		return err
 	}
-	output, err := ioutil.TempFile(Cache, "utahtmp")
+	output, err := ioutil.TempFile(cache, "utahtmp")
 	if err != nil {
 		log.Println("Getting a temporary file failed", err)
 		return err
 	}
 	_, err = io.Copy(output, resp.Body)
 	if err != nil {
-		log.Println("cache, o.Name, dest", Cache, output.Name(), dest)
+		log.Println("cache, o.Name, dest", cache, output.Name(), dest)
 		return err
 	}
 	err = os.Rename(output.Name(), dest)
@@ -78,14 +78,17 @@ func DownloadToCache(url, filename string) error {
 }
 
 func ConvertToVDI(src, dest string) error {
-	if _, err := os.Stat(dest); err == nil || err.(*os.PathError).Err != syscall.ENOENT {
+	full_src := filepath.Join(cache, src)
+	full_dest := filepath.Join(cache, dest)
+
+	if _, err := os.Stat(full_dest); err == nil || err.(*os.PathError).Err != syscall.ENOENT {
 		if err == nil {
-			log.Println(dest, " already exists")
+			log.Println(full_dest, " already exists")
 		}
 		return err
 	}
 
-	cmd := exec.Command("qemu-img", "convert", "-O", "vdi", src, dest)
+	cmd := exec.Command("qemu-img", "convert", "-O", "vdi", full_src, full_dest)
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
 		return err
@@ -123,15 +126,14 @@ func CreateMachine(name, image string) (*Machine, error) {
 		return nil, err
 	}
 
-	wd, _ := os.Getwd()
-	fmt.Println(wd)
-	err = CopyFile(image, "temp.vdi")
+	backing_path := filepath.Join(cache, "temp.vdi")
+	err = CopyFile(filepath.Join(cache, image), backing_path)
 	if err != nil {
 		fmt.Println("creating a backing store failed", err)
 		return nil, err
 	}
 
-	err = new_machine.AttachStorage("defaultctlr", virtualbox.StorageMedium{Port: 1, Device: 0, DriveType: virtualbox.DriveHDD, Medium: filepath.Join(wd, "temp.vdi")})
+	err = new_machine.AttachStorage("defaultctlr", virtualbox.StorageMedium{Port: 1, Device: 0, DriveType: virtualbox.DriveHDD, Medium:  backing_path})
 	if err != nil {
 		fmt.Println("attaching storage failed", err)
 		return nil, err
