@@ -6,7 +6,6 @@ package main
 
 import (
 	"fmt"
-	"github.com/riobard/go-virtualbox"
 	"log"
 	"path/filepath"
 	"time"
@@ -14,7 +13,6 @@ import (
 )
 
 func main() {
-	virtualbox.Verbose = true
 	log.SetFlags(log.Lshortfile)
 
 	err := utah.DownloadToCache("https://cloud-images.ubuntu.com/trusty/current/trusty-server-cloudimg-amd64-disk1.img", "trusty-cloud.img")
@@ -35,26 +33,23 @@ func main() {
 	}
 
 	// boot
-	log.Println("vb state", new_machine.State)
-	new_machine.Refresh()
+	log.Println("vb state", new_machine.State())
 	err = new_machine.Start()
 	if err != nil {
 		fmt.Println("starting the machine failed", err)
 		return
 	}
-	log.Println("vb state", new_machine.State)
+	log.Println("vb state", new_machine.State())
 	time.Sleep(10)
-	new_machine.Refresh()
-	log.Println("vb state", new_machine.State)
+	log.Println("vb state", new_machine.State())
 
 	// poweroff
-	err = new_machine.Poweroff()
+	err = new_machine.Stop()
 	if err != nil {
 		fmt.Println("powering off the machine failed", err)
 		return
 	}
-	new_machine.Refresh()
-	log.Println("powered off the machine. State:", new_machine.State)
+	log.Println("powered off the machine. State:", new_machine.State())
 
 	// delete
 	err = new_machine.Delete()

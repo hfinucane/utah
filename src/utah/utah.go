@@ -103,7 +103,7 @@ func ConvertToVDI(src, dest string) error {
 	}
 }
 
-func CreateMachine(name, image string) (*virtualbox.Machine, error) {
+func CreateMachine(name, image string) (*Machine, error) {
 	_, err := virtualbox.CreateMachine(name, "")
 	if err != nil {
 		fmt.Println("create machine failed", err)
@@ -144,5 +144,5 @@ func CreateMachine(name, image string) (*virtualbox.Machine, error) {
 		return nil, err
 	}
 
-	return new_machine, nil
+	return &Machine{new_machine, name, image}, nil
 }
