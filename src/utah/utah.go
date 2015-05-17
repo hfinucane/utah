@@ -109,11 +109,11 @@ func ConvertToVDI(src, dest string) error {
 func CreateMachine(name, image string) (*Machine, error) {
 	_, err := virtualbox.CreateMachine(name, "")
 	if err != nil {
-		fmt.Println("create machine failed", err)
+		log.Println("create machine failed", err)
 		return nil, err
 	}
 	machines, _ := virtualbox.ListMachines()
-	fmt.Println(machines)
+	log.Println(machines)
 
 	// XXX TODO FIXME actually get the right machine out of here
 	new_machine := machines[len(machines)-1]
@@ -122,20 +122,20 @@ func CreateMachine(name, image string) (*Machine, error) {
 	// Chose things that looked like VB defaults, and magic numbers from boot2docker-cli
 	err = new_machine.AddStorageCtl("defaultctlr", virtualbox.StorageController{SysBus: virtualbox.SysBusSATA, Ports: 4, Chipset: virtualbox.CtrlIntelAHCI, HostIOCache: true, Bootable: true})
 	if err != nil {
-		fmt.Println("adding storage controller failed", err)
+		log.Println("adding storage controller failed", err)
 		return nil, err
 	}
 
 	backing_path := filepath.Join(cache, "temp.vdi")
 	err = CopyFile(filepath.Join(cache, image), backing_path)
 	if err != nil {
-		fmt.Println("creating a backing store failed", err)
+		log.Println("creating a backing store failed", err)
 		return nil, err
 	}
 
 	err = new_machine.AttachStorage("defaultctlr", virtualbox.StorageMedium{Port: 1, Device: 0, DriveType: virtualbox.DriveHDD, Medium:  backing_path})
 	if err != nil {
-		fmt.Println("attaching storage failed", err)
+		log.Println("attaching storage failed", err)
 		return nil, err
 	}
 
@@ -143,7 +143,7 @@ func CreateMachine(name, image string) (*Machine, error) {
 	nic := virtualbox.NIC{virtualbox.NICNetHostonly, virtualbox.VirtIO, "vboxnet0"}
 	err = new_machine.SetNIC(1, nic)
 	if err != nil {
-		fmt.Println("nic setup failed", err)
+		log.Println("nic setup failed", err)
 		return nil, err
 	}
 
