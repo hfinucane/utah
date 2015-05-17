@@ -5,185 +5,59 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"github.com/riobard/go-virtualbox"
-	"io"
-	"io/ioutil"
 	"log"
-	"net/http"
-	"os"
-	"os/exec"
 	"path/filepath"
-	"syscall"
 	"time"
+	"utah"
 )
-
-var cache string = "/var/tmp/.utahcache"
-
-func CopyFile(src, dest string) error {
-	input, err := os.Open(src)
-	if err != nil {
-		return err
-	}
-	defer input.Close()
-
-	output, err := os.OpenFile(dest, os.O_WRONLY|os.O_CREATE, 0666)
-	if err != nil {
-		return err
-	}
-	defer output.Close()
-
-	_, err = io.Copy(output, input)
-
-	return err
-}
-
-func DownloadToCache(url, filename string) error {
-	dest := filepath.Join(cache, filename)
-
-	err := os.MkdirAll(cache, 0755)
-	if err != nil {
-		return err
-	}
-
-	resp, err := http.Get(url)
-	if err != nil {
-		log.Println("Download of", url, "failed", err)
-		return err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != 200 {
-		return errors.New(fmt.Sprintf("Received a return code of ", resp.StatusCode))
-	}
-
-	if _, err := os.Stat(dest); err == nil || err.(*os.PathError).Err != syscall.ENOENT {
-		if err == nil {
-			log.Println("cached file", filename, "already exists")
-		}
-		return err
-	}
-	output, err := ioutil.TempFile(cache, "utahtmp")
-	if err != nil {
-		log.Println("Getting a temporary file failed", err)
-		return err
-	}
-	_, err = io.Copy(output, resp.Body)
-	if err != nil {
-		log.Println("cache, o.Name, dest", cache, output.Name(), dest)
-		return err
-	}
-	err = os.Rename(output.Name(), dest)
-	return err
-}
-
-func ConvertToVDI(src, dest string) error {
-	if _, err := os.Stat(dest); err == nil || err.(*os.PathError).Err != syscall.ENOENT {
-		if err == nil {
-			log.Println(dest, " already exists")
-		}
-		return err
-	}
-
-	cmd := exec.Command("qemu-img", "convert", "-O", "vdi", src, dest)
-	stderr, err := cmd.StderrPipe()
-	if err != nil {
-		return err
-	}
-	err = cmd.Run()
-	switch err.(type) {
-	case *exec.ExitError:
-		stderr_bytes, err := ioutil.ReadAll(stderr)
-		if err != nil {
-			return err
-		}
-		return errors.New(string(stderr_bytes))
-	default:
-		return err
-	}
-}
 
 func main() {
 	virtualbox.Verbose = true
 	log.SetFlags(log.Lshortfile)
 
-	err := DownloadToCache("https://cloud-images.ubuntu.com/trusty/current/trusty-server-cloudimg-amd64-disk1.img", "trusty-cloud.img")
+	err := utah.DownloadToCache("https://cloud-images.ubuntu.com/trusty/current/trusty-server-cloudimg-amd64-disk1.img", "trusty-cloud.img")
 	if err != nil {
 		fmt.Println("Failed to populate the image cache", err)
 		return
 	}
 
-	err = ConvertToVDI(filepath.Join(cache, "trusty-cloud.img"), "trusty-cloud.vdi")
+	err = utah.ConvertToVDI(filepath.Join(utah.Cache, "trusty-cloud.img"), "trusty-cloud.vdi")
 	if err != nil {
 		fmt.Println("Conversion failed", err)
 		return
 	}
 
-	_, err = virtualbox.CreateMachine("utah-test0", "")
+	new_machine, err := utah.CreateMachine("utah-test0", "trusty-cloud.vdi")
 	if err != nil {
-		fmt.Println("create machine failed", err)
-		return
-	}
-	machines, _ := virtualbox.ListMachines()
-	fmt.Println(machines)
-
-	utah := machines[0]
-
-	// set up storage
-	// Chose things that looked like VB defaults, and magic numbers from boot2docker-cli
-	err = utah.AddStorageCtl("defaultctlr", virtualbox.StorageController{SysBus: virtualbox.SysBusSATA, Ports: 4, Chipset: virtualbox.CtrlIntelAHCI, HostIOCache: true, Bootable: true})
-	if err != nil {
-		fmt.Println("adding storage controller failed", err)
-		return
-	}
-
-	wd, _ := os.Getwd()
-	fmt.Println(wd)
-	err = CopyFile("trusty-cloud.vdi", "temp.vdi")
-	if err != nil {
-		fmt.Println("creating a backing store failed", err)
-		return
-	}
-
-	err = utah.AttachStorage("defaultctlr", virtualbox.StorageMedium{Port: 1, Device: 0, DriveType: virtualbox.DriveHDD, Medium: filepath.Join(wd, "temp.vdi")})
-	if err != nil {
-		fmt.Println("attaching storage failed", err)
-		return
-	}
-
-	// set up network
-	nic := virtualbox.NIC{virtualbox.NICNetHostonly, virtualbox.VirtIO, "vboxnet0"}
-	err = utah.SetNIC(1, nic)
-	if err != nil {
-		fmt.Println("nic setup failed", err)
-		return
+		fmt.Println("Creating a machine failed", err)
 	}
 
 	// boot
-	log.Println("vb state", utah.State)
-	utah.Refresh()
-	err = utah.Start()
+	log.Println("vb state", new_machine.State)
+	new_machine.Refresh()
+	err = new_machine.Start()
 	if err != nil {
 		fmt.Println("starting the machine failed", err)
 		return
 	}
-	log.Println("vb state", utah.State)
+	log.Println("vb state", new_machine.State)
 	time.Sleep(10)
-	utah.Refresh()
-	log.Println("vb state", utah.State)
+	new_machine.Refresh()
+	log.Println("vb state", new_machine.State)
 
 	// poweroff
-	err = utah.Poweroff()
+	err = new_machine.Poweroff()
 	if err != nil {
 		fmt.Println("powering off the machine failed", err)
 		return
 	}
-	utah.Refresh()
-	log.Println("powered off the machine. State:", utah.State)
+	new_machine.Refresh()
+	log.Println("powered off the machine. State:", new_machine.State)
 
 	// delete
-	err = utah.Delete()
+	err = new_machine.Delete()
 	if err != nil {
 		fmt.Println("deleting the machine failed", err)
 		return
