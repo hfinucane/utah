@@ -13,6 +13,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"syscall"
 	"time"
@@ -77,6 +78,32 @@ func DownloadToCache(url, filename string) error {
 	return err
 }
 
+func ConvertToVDI(src, dest string) error {
+	if _, err := os.Stat(dest); err == nil || err.(*os.PathError).Err != syscall.ENOENT {
+		if err == nil {
+			log.Println(dest, " already exists")
+		}
+		return err
+	}
+
+	cmd := exec.Command("qemu-img", "convert", "-O", "vdi", src, dest)
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return err
+	}
+	err = cmd.Run()
+	switch err.(type) {
+	case *exec.ExitError:
+		stderr_bytes, err := ioutil.ReadAll(stderr)
+		if err != nil {
+			return err
+		}
+		return errors.New(string(stderr_bytes))
+	default:
+		return err
+	}
+}
+
 func main() {
 	virtualbox.Verbose = true
 	log.SetFlags(log.Lshortfile)
@@ -84,6 +111,12 @@ func main() {
 	err := DownloadToCache("https://cloud-images.ubuntu.com/trusty/current/trusty-server-cloudimg-amd64-disk1.img", "trusty-cloud.img")
 	if err != nil {
 		fmt.Println("Failed to populate the image cache", err)
+		return
+	}
+
+	err = ConvertToVDI(filepath.Join(cache, "trusty-cloud.img"), "trusty-cloud.vdi")
+	if err != nil {
+		fmt.Println("Conversion failed", err)
 		return
 	}
 
