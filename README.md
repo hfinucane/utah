@@ -16,3 +16,7 @@ You can also build it with the standard tools:
     export GOPATH=`pwd`
     cd src/cmd/utah
     go build
+
+# Third Party Binaries
+
+Depends on Virtualbox and qemu-img being installed and available.
