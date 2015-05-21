@@ -4,14 +4,14 @@
 
 package utah_test
 
-import	(
-		"utah"
-		"testing"
-		"github.com/riobard/go-virtualbox"
-		"fmt"
-		"time"
-		"log"
-		)
+import (
+	"fmt"
+	"github.com/riobard/go-virtualbox"
+	"log"
+	"testing"
+	"time"
+	"utah"
+)
 
 func TestLifecycle(t *testing.T) {
 	virtualbox.Verbose = true
